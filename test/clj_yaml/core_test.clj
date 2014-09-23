@@ -161,3 +161,12 @@ the-bin: !!binary 0101")
     (let [timestamp "2001-11-23 15:02:31.123456 -04:00"
           expected 1006542151123]
       (is (= (.getTime (parse-string timestamp)) expected)))))
+
+(deftest tags-work
+  (let [parsed (parse-string "abc: !xyz 123" :tags {"!xyz" (fn [x] (str "<|" x "|>"))})]
+    (is (= (:abc parsed) "<|123|>"))))
+
+(deftest marking-works-on-tags
+  (let [parsed (parse-string "!xyz 123" :tags {"!xyz" identity} :mark true)]
+    (is (marked? parsed))
+    (is (= (:unmark parsed) "123"))))

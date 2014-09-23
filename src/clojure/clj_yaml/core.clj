@@ -1,8 +1,7 @@
 (ns clj-yaml.core
   (:import (org.yaml.snakeyaml Yaml DumperOptions DumperOptions$FlowStyle)
-           (org.yaml.snakeyaml.constructor Constructor SafeConstructor)
            (org.yaml.snakeyaml.representer Representer)
-           (clj_yaml MarkedConstructor)))
+           (clj_yaml ExtensibleConstructor ExtensibleSafeConstructor)))
 
 (def flow-styles
   {:auto DumperOptions$FlowStyle/AUTO
@@ -16,11 +15,12 @@
 
 (defn make-yaml
   "Make a yaml encoder/decoder with some given options."
-  [& {:keys [dumper-options unsafe mark]}]
-  (let [constructor
-        (if unsafe (Constructor.)
-            (if mark (MarkedConstructor.) (SafeConstructor.)))
-        ;; TODO: unsafe marked constructor
+  [& {:keys [dumper-options unsafe tags mark]}]
+  (let [tags (or tags {})
+        mark (boolean mark)
+        constructor (if unsafe
+                      (ExtensibleConstructor. tags mark)
+                      (ExtensibleSafeConstructor. tags mark))
         dumper (if dumper-options
                  (make-dumper-options :flow-style (:flow-style dumper-options))
                  (DumperOptions.))]
@@ -53,7 +53,7 @@
   (decode [data keywords]))
 
 (extend-protocol YAMLCodec
-  clj_yaml.MarkedConstructor$Marked
+  clj_yaml.Extensibility$Marked
   (decode [data keywords]
     (letfn [(from-Mark [mark]
               {:line (.getLine mark)
@@ -112,5 +112,5 @@
          (encode data)))
 
 (defn parse-string
-  [string & {:keys [unsafe mark keywords] :or {keywords true}}]
-  (decode (.load (make-yaml :unsafe unsafe :mark mark) string) keywords))
+  [string & {:keys [unsafe mark keywords tags] :or {keywords true}}]
+  (decode (.load (make-yaml :unsafe unsafe :mark mark :tags tags) string) keywords))
